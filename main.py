@@ -77,8 +77,10 @@ def main():
         print(dataset.head())
     
     # Denoise the masked sentences 
-    print(dataset.head())
+    # Setip the model for agnews dataset
     model.as_agnews(args.mask_word)
+
+    #Denoise the masked sentences
     denoised =model.denoise_sentence("<mask> Fines <mask> <mask> #36;5,000 for Punch (AP) AP - <mask> Gleason of the New Orleans Saints was fined #36;5,000 by the NFL on Wednesday after being thrown out of last week's game with Carolina for punching the Panthers' Kemp Rasmussen at the end of a kickoff return.")
     print(denoised)
 
