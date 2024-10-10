@@ -187,7 +187,8 @@ Technology"""
 
         # self.verbalizer = self.agnews_verbalizer
         self.num_labels = 4
-        self.label_token = [14058, 29903, 16890, 7141]
+        self.label_token = [14058, 29903, 16890, 7141] # ie world, S, Bus, Te
+        self.label_name  = ["World", "Sport", "Business", "Technologie"]
         # self.label_token = [2787, 12453, 15197, 5636]
 
     def predict_batch(self, instances, past_predictions=None, past_answer=None):
@@ -231,7 +232,20 @@ Technology"""
             output_list = past_predictions
             
         return answers, output_list
-    
+
+    def classify_sentence(self, sentence) :
+        with torch.no_grad(): 
+            prompt = self.template.format(self.instruction, sentence)
+            inputs = self.alpaca_tokenizer(prompt, return_tensors="pt",padding=True)
+            # inputs.pop('token_type_ids')
+            outputs = self.ds_engine(inputs.input_ids.to(self.alpaca_model.device),attention_mask=inputs.attention_mask.to(self.alpaca_model.device))
+            org_guess_dist = torch.softmax(outputs['logits'],dim=-1)[...,-1,:][:,self.label_token]
+            prediction = org_guess_dist.cpu()
+            # Find the index of the maximum probability
+            _, max_indices = torch.max(prediction, dim=1)
+
+        return self.label_name[max_indices]
+
     def shap_masking(self, data, sparse_mask_rate) :
         prompt ="""
 Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\nGiven a 
@@ -352,7 +366,6 @@ play it.\n\n### Response:\nTechnology\n\n### Input:\n
             output_list_b.extend(output)
             prompt_list = []
 
-
     def denoise_sentence(self, sentence):
         denoise_instruction = self.denoise_instruction
         prompt = self.template_without_input.format(denoise_instruction.format(sentence))
@@ -362,4 +375,4 @@ play it.\n\n### Response:\nTechnology\n\n### Input:\n
         # Generate
         generate_ids = self.ds_engine.generate(inputs.input_ids.to(self.alpaca_model.device),attention_mask=inputs.attention_mask.to(self.alpaca_model.device),bad_words_ids=[[529],[29966]],repetition_penalty=1.3,num_beams=2, max_new_tokens=80)
         output = self.alpaca_tokenizer.decode(generate_ids[0], skip_special_tokens=True, clean_up_tokenization_spaces=False,)
-        return output
+        return output[len(prompt):]

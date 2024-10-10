@@ -41,6 +41,7 @@ def check_existance(file_path) :
 data = []
 
 def main():
+    tqdm.pandas()
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(description="A script that loads a config file and reads arguments.")
     parser.add_argument('--model', type=str, help='The name of the Huggingface repo containing the model.')
@@ -64,25 +65,30 @@ def main():
 
     # Load the model
     model = Alpaca(args, config["model"])
-    
-    
+
+    # Setup the model for the appropriate dataset
+    model.as_agnews(args.mask_word)
+
     # Save the dataset as a json file 
     if check_existance('out/dataset_masked.json') :
         dataset = pd.read_json("out/dataset_masked.json",orient='records', lines=True)
     else :
         # Mask the sentences 
-        tqdm.pandas()
         dataset['masked'] = dataset["text"].progress_apply(lambda x: model.shap_masking(x, args.maskrate))
         dataset.to_json('out/dataset_masked.json', orient='records', lines=True)
         print(dataset.head())
+
+    if check_existance('out/dataset_denoised.json') :
+        dataset = pd.read_json("out/dataset_denoised.json",orient='records', lines=True)
+    else :
+        # Denoise the sentences
+        print("Denoising :")
+        dataset['denoised'] = dataset['masked'].progress_apply(model.denoise_sentence)
+        dataset.to_json('out/dataset_denoised.json', orient='records', lines=True)
     
-    # Denoise the masked sentences 
-    # Setip the model for agnews dataset
-    model.as_agnews(args.mask_word)
-
-    #Denoise the masked sentences
-    denoised =model.denoise_sentence("<mask> Fines <mask> <mask> #36;5,000 for Punch (AP) AP - <mask> Gleason of the New Orleans Saints was fined #36;5,000 by the NFL on Wednesday after being thrown out of last week's game with Carolina for punching the Panthers' Kemp Rasmussen at the end of a kickoff return.")
-    print(denoised)
-
+    # Do the prediction 
+    dataset['prediction'] = dataset['denoised'].progress_apply(model.classify_sentence)
+    dataset.to_json('out/dataset_prediction.json', orient='records', lines=True)
+    
 if __name__ == "__main__":
     main()
