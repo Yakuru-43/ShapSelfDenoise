@@ -189,6 +189,7 @@ Technology"""
         self.num_labels = 4
         self.label_token = [14058, 29903, 16890, 7141] # ie world, S, Bus, Te
         self.label_name  = ["World", "Sport", "Business", "Technologie"]
+        self.label_code =  [101, 102, 103, 104]
         # self.label_token = [2787, 12453, 15197, 5636]
 
     def predict_batch(self, instances, past_predictions=None, past_answer=None):
@@ -244,7 +245,7 @@ Technology"""
             # Find the index of the maximum probability
             _, max_indices = torch.max(prediction, dim=1)
 
-        return self.label_name[max_indices]
+        return self.label_code[max_indices]
 
     def shap_masking(self, data, sparse_mask_rate) :
         prompt ="""
