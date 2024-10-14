@@ -8,7 +8,7 @@ python main.py \
     --config config.yml \
     --batchsize 3 \
     --sample-size 100 \
-    --precision full \
+    --precision half \
     --dataset agnews \
     --maskrate 0.1 \
     --mask_word "<mask>"
