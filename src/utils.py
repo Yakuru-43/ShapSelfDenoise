@@ -86,7 +86,7 @@ def setup_model(args, config):
 
     # Setup the model for the appropriate dataset
     if args.dataset == "agnews":
-        model.as_agnews()
+        model.as_agnews(args.mask_word)
     elif args.dataset == "sst2":
         model.as_sst2()
 
@@ -172,7 +172,8 @@ def certify(args, config):
         model: The initialized model.
     """
     # Load dataset
-    dataset = load_dataset(args, config)
+    # dataset = load_dataset(args, config)
+    dataset = pd.read_json("dataset/agnews_raw/dataset.json", orient="records", lines=True)
 
     # Setup the model for the appropriate dataset
     model = setup_model(args, config)
