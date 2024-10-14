@@ -86,9 +86,9 @@ def setup_model(args, config):
 
     # Setup the model for the appropriate dataset
     if args.dataset == "agnews":
-        model.setup_agnews()
+        model.as_agnews()
     elif args.dataset == "sst2":
-        model.setup_sst2()
+        model.as_sst2()
 
     return model
 
