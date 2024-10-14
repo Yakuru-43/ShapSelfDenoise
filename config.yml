@@ -1,1 +1,3 @@
 model: Yakuru-43/alpaca_ckpt
+agnews_path : dataset/agnews_raw/test.csv
+sst2_path : dataset/sst2/test.txt
