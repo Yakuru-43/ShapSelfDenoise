@@ -20,12 +20,9 @@ def main():
 
     # Either certify or attack
     if args.mode == "certify":
-        dataset = utils.certify(args, config)
+        utils.certify(args, config)
     elif args.mode == "attack":
-        dataset = utils.attack(args, config)
-
-    # Save the results
-    utils.save_results(args, dataset)
+        utils.attack(args, config)
 
 
 if __name__ == "__main__":

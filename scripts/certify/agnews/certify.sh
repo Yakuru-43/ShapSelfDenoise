@@ -10,5 +10,4 @@ python main.py \
     --sample-size 100 \
     --precision half \
     --dataset agnews \
-    --maskrate 0.1 \
     --mask_word "<mask>"

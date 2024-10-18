@@ -132,7 +132,7 @@ def load_dataset(args, config):
     return dataset
 
 
-def save_results(args, results):
+def save_results(args, mask_rate, results):
     """
     Save the results to a CSV file.
 
@@ -141,7 +141,7 @@ def save_results(args, results):
         results: The results as a Pandas DataFrame.
     """
     # setp up folder name with dataset name + mask rate + sample size
-    save_folder_path = f"out/{args.mode}_{args.dataset}_mask_rate_{args.maskrate}_sample_size_{args.sample_size}"
+    save_folder_path = f"out/{args.mode}_{args.dataset}_mask_rate_{mask_rate}_sample_size_{args.sample_size}"
     # Create the folder if it doesn't exist in the /out folder
     if not os.path.exists(save_folder_path):
         os.makedirs(save_folder_path)
@@ -156,6 +156,7 @@ def save_results(args, results):
     with open(save_folder_path + "/results.log", "w") as log_file:
         for key, value in vars(args).items():
             log_file.write(f"{key} = {value}\n")
+        log_file.write(f"Mask Rate: {mask_rate}\n")
         log_file.write("\n")
         log_file.write(f"Accuracy: {accuracy}")
 
@@ -179,23 +180,39 @@ def certify(args, config):
     model = setup_model(args, config)
 
     # Set up progress bar
-    tqdm.pandas()
+    tqdm.pandas()   
+    
+    # Adding column shapley_values setup with None value 
+    dataset['shapley_values'] = None
 
-    # Mask the sentences
-    tqdm.pandas(desc="Masking the sentences...")
-    dataset["masked"] = dataset["text"].progress_apply(
-        lambda x: model.shap_masking(x, args.maskrate)
-    )
+    # Set up the mask rate
+    mask_rate = 0.1
+    # Loop on the mask rates from 0.1 to 0.9 with 0.1 step
+    while mask_rate <= 0.9:
+        print(f"For the mask rate: {mask_rate}")
 
-    # Denoise the sentences
-    tqdm.pandas(desc="Denoising the sentences...")
-    dataset["denoised"] = dataset["masked"].progress_apply(model.denoise_sentence)
+        # Mask the sentences
+        tqdm.pandas(desc="Masking the sentences...")
+        dataset[['masked', 'shapley_values']] = dataset.progress_apply(
+            lambda row: model.shap_masking(row['text'], mask_rate, row['shapley_values']), axis=1
+        ).apply(pd.Series)
 
-    # Do the prediction
-    tqdm.pandas(desc="Classifying the sentences...")
-    dataset["prediction"] = dataset["denoised"].progress_apply(model.classify_sentence)
+        # Denoise the sentences
+        tqdm.pandas(desc="Denoising the sentences...")
+        dataset["denoised"] = dataset["masked"].progress_apply(model.denoise_sentence)
 
-    return dataset
+        # Do the prediction
+        tqdm.pandas(desc="Classifying the sentences...")
+        dataset["prediction"] = dataset["denoised"].progress_apply(model.classify_sentence)
+
+        # Save the results
+        save_results(args, 1+mask_rate, dataset)
+
+        # Update the mask rate
+        mask_rate += 0.1
+
+        # Delete column masked, denoised and prediction, this is purely out of safety reason it should not matter
+        dataset = dataset.drop(columns=['masked', 'denoised', 'prediction'])
 
 
 def attack(args, config):

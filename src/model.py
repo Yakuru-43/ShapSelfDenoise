@@ -11,6 +11,18 @@ from captum.attr import (
 
 def mask_words(text, score, p, mask_word):
     # Split the text into words
+    """
+    Replaces the top p% of words in a given text with the given mask_word, based on the scores provided.
+    
+    Args:
+        text (str): The text to modify.
+        score (list): A list of scores associated with each word in the text.
+        p (float): The percentage of words to replace, as a float between 0 and 1.
+        mask_word (str): The word to replace the top-scoring words with.
+    
+    Returns:
+        str: The modified text with the top-scoring words replaced.
+    """
     words = text.split()
 
     # Calculate the number of words to replace based on the percentage
@@ -247,8 +259,29 @@ Technology"""
 
         return self.label_code[max_indices]
 
-    def shap_masking(self, data, sparse_mask_rate) :
-        prompt ="""
+    def shap_masking(self, data, mask_rate, precalculated_shapley_values):
+        
+        """
+        This function takes a sentence and a mask rate as input, and returns a sentence with a certain percentage of the words replaced by a <mask> token. The words to be replaced are chosen according to their SHAPley value. 
+        The SHAPley value is a measure of the importance of a particular word in a sentence for a particular task. 
+        The higher the SHAPley value of a word, the more important it is to the task.
+
+        If the precalculated_shapley_values parameter is not None, it is assumed to contain the precalculated SHAPley values for the sentence. 
+        In this case, the function will use these values instead of calculating the SHAPley values itself.
+
+        The function returns a tuple, where the first element is the masked sentence and the second element is the SHAPley values used to mask the sentence.
+        
+        Input:
+        data: the sentence to be masked as a string
+        mask_rate: the percentage of words to be replaced by a <mask> token as a float between 0 and 1
+
+        Output:
+        masked_sentence: the masked sentence as a string
+        shapley_values: the SHAPley values used to mask the sentence as a list
+        """
+
+        if precalculated_shapley_values is None:
+            prompt ="""
 Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\nGiven a 
 news article title and description, classify it into one of the four categories: Sports, World, Technology, or Business. Return the category name as the answer.\n\n### Input: \nTitle: 
 Venezuelans Vote Early in Referendum on Chavez Rule (Reuters)\nDescription: Reuters - Venezuelans turned out early and in large numbers on Sunday to vote in a historic referendum that will 
@@ -261,41 +294,38 @@ among the guys at the office? EA Sports would like to think it was because "Madd
 play it.\n\n### Response:\nTechnology\n\n### Input:\n
 """
 
-        suffix = "\n\n### Response:\n"
+            suffix = "\n\n### Response:\n"
 
-        # Do the classification
-        model_input = self.alpaca_tokenizer(prompt + data + suffix, return_tensors="pt").to("cuda")
-        with torch.no_grad(): 
-            output_ids = self.alpaca_model.generate(model_input["input_ids"], max_new_tokens=1)[0]
-            response = self.alpaca_tokenizer.decode(output_ids, skip_special_tokens=True)
-            category = response.split()[-1]
-            # print(f"The class is '{category}'")
+            # Do the classification
+            model_input = self.alpaca_tokenizer(prompt + data + suffix, return_tensors="pt").to("cuda")
+            with torch.no_grad(): 
+                output_ids = self.alpaca_model.generate(model_input["input_ids"], max_new_tokens=1)[0]
+                response = self.alpaca_tokenizer.decode(output_ids, skip_special_tokens=True)
+                category = response.split()[-1]
 
-        # Here the code that does the SHAP shit 
-        fa = FeatureAblation(self.alpaca_model)
-        llm_attr = LLMAttribution(fa, self.alpaca_tokenizer)
+            # Here the code that does the SHAP shit 
+            fa = FeatureAblation(self.alpaca_model)
+            llm_attr = LLMAttribution(fa, self.alpaca_tokenizer)
 
-        eval_prompt, values_to_add = add_placeholders(prompt, data, suffix)
+            eval_prompt, values_to_add = add_placeholders(prompt, data, suffix)
 
-        inp = TextTemplateInput(
-            template=eval_prompt, 
-            values=values_to_add,
-        )
+            inp = TextTemplateInput(
+                template=eval_prompt, 
+                values=values_to_add,
+            )
 
-        attr_res = llm_attr.attribute(inp,target= category)
+            attr_res = llm_attr.attribute(inp,target= category)
+        
+            #Ge the shapley values 
+            shapley_values = attr_res.token_attr.cpu().numpy().tolist()[0]
 
-        #Ge the shapley values 
-        shapley_values = attr_res.token_attr.cpu().numpy().tolist()[0]
+        # Shapley values have already bean calculated for the data in a previous run
+        else : 
+            shapley_values = precalculated_shapley_values
 
-        # #Create a plot and save it
-        # attr_res.plot_token_attr(show=False)
-        # import matplotlib.pyplot as plt
-        # plt.savefig('0000000.png')  # save the figure to a file
-        # plt.close()
+        masqued_text = mask_words(data, shapley_values, mask_rate, "<mask>")
 
-        masqued_text = mask_words(data, shapley_values, sparse_mask_rate, "<mask>")
-
-        return masqued_text
+        return masqued_text, shapley_values
 
     def denoise_instances(self,instances):
         
