@@ -259,6 +259,28 @@ Technology"""
 
         return self.label_code[max_indices]
 
+    def classify_sentence_one_hot(self, sentence) :
+            with torch.no_grad(): 
+                prompt = self.template.format(self.instruction, sentence)
+                inputs = self.alpaca_tokenizer(prompt, return_tensors="pt",padding=True)
+                # inputs.pop('token_type_ids')
+                outputs = self.ds_engine(inputs.input_ids.to(self.alpaca_model.device),attention_mask=inputs.attention_mask.to(self.alpaca_model.device))
+                org_guess_dist = torch.softmax(outputs['logits'],dim=-1)[...,-1,:][:,self.label_token]
+                prediction = org_guess_dist.cpu()   
+
+                # Find the index of the maximum value in each row (since your tensor has only one row)
+                _, max_indices = torch.max(prediction, dim=1)
+
+                # Create a zero tensor of the same shape as the input
+                one_hot_tensor = torch.zeros_like(prediction)
+
+                # Set the maximum index to 1 in each row
+                one_hot_tensor.scatter_(1, max_indices.unsqueeze(1), 1.0)
+
+
+            return one_hot_tensor
+
+
     def shap_masking(self, data, mask_rate, precalculated_shapley_values):
         
         """
