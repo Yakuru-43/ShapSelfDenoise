@@ -267,7 +267,7 @@ Technology"""
                 outputs = self.ds_engine(inputs.input_ids.to(self.alpaca_model.device),attention_mask=inputs.attention_mask.to(self.alpaca_model.device))
                 org_guess_dist = torch.softmax(outputs['logits'],dim=-1)[...,-1,:][:,self.label_token]
                 prediction = org_guess_dist.cpu()   
-
+                print(prediction)
                 # Find the index of the maximum value in each row (since your tensor has only one row)
                 _, max_indices = torch.max(prediction, dim=1)
 
