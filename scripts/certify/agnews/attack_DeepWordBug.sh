@@ -4,7 +4,8 @@
 # You can modify the argument values as needed.
 
 python main.py \
-    --mode certify \
+    --mode attack \
+    --method DeepWordBug \
     --config config.yml \
     --batchsize 16 \
     --sample-size 100 \
