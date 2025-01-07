@@ -222,7 +222,16 @@ def attack(args, config):
     Args:
         args: The command-line arguments passed to the script.
         config: The configuration dictionary loaded from the YAML file.
-        model: The initialized model.
     """
     # Load dataset
+
+    # Get the ground truth for the dataset 
+
+    # Apply an attack technique to the dataset
+
+    # Predict the class of the attacked dataset
+
+    # Compute accuracy of the attacked dataset 
+    
+    # Save the results
     pass
