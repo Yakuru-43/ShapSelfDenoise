@@ -3,7 +3,8 @@ import torch
 import numpy as np
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from captum.attr import (
-    FeatureAblation, 
+    FeatureAblation,
+    ShapleyValueSampling, 
     LLMAttribution, 
     TextTemplateInput,
 )
@@ -93,16 +94,18 @@ class Alpaca(torch.nn.Module):
         # Determine precision type
         if precision == 'full':
             dtype = torch.float32
+            print("Loading model with full precision.")
         else:  # 'half'
             dtype = torch.float16
+            print("Loading model with half precision.")
         
-        alpaca_model = transformers.AutoModelForCausalLM.from_pretrained(model_path, device_map = 'cuda', torch_dtype=dtype)
+        alpaca_model = transformers.AutoModelForCausalLM.from_pretrained(model_path, device_map = 'auto', torch_dtype=dtype)
         print(f"Model loaded with {precision} precision ({dtype}).")
 
 
         alpaca_tokenizer.padding_side = "left" 
 
-        alpaca_model.cuda()
+        # alpaca_model.cuda()
         alpaca_model.eval()
 
         
@@ -326,7 +329,7 @@ play it.\n\n### Response:\nTechnology\n\n### Input:\n
                 category = response.split()[-1]
 
             # Here the code that does the SHAP shit 
-            fa = FeatureAblation(self.alpaca_model)
+            fa = ShapleyValueSampling(self.alpaca_model)
             llm_attr = LLMAttribution(fa, self.alpaca_tokenizer)
 
             eval_prompt, values_to_add = add_placeholders(prompt, data, suffix)
