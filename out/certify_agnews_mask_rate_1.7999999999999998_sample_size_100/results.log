@@ -2,10 +2,10 @@ mode = certify
 config = config.yml
 batchsize = 3
 sample_size = 100
-precision = half
+precision = full
 dataset = agnews
 maskrate = 0.1
 mask_word = <mask>
 Mask Rate: 1.7999999999999998
 
-Accuracy: 0.64
+Accuracy: 0.63

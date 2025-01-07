@@ -206,7 +206,7 @@ def certify(args, config):
         dataset["prediction"] = dataset["denoised"].progress_apply(model.classify_sentence)
 
         # Save the results
-        save_results(args, 1+mask_rate, dataset)
+        save_results(args, mask_rate, dataset)
 
         # Update the mask rate
         mask_rate += 0.1
