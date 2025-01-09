@@ -432,3 +432,47 @@ play it.\n\n### Response:\nTechnology\n\n### Input:\n
         generate_ids = self.ds_engine.generate(inputs.input_ids.to(self.alpaca_model.device),attention_mask=inputs.attention_mask.to(self.alpaca_model.device),bad_words_ids=[[529],[29966]],repetition_penalty=1.3,num_beams=2, max_new_tokens=80)
         output = self.alpaca_tokenizer.decode(generate_ids[0], skip_special_tokens=True, clean_up_tokenization_spaces=False,)
         return output[len(prompt):]
+
+def forward(self, input_ids, **kargs):
+        """
+        Denoise the input text and then generate text based on the denoised input.
+
+        Args:
+            input_ids: The input ids to be denoised.
+            attention_mask: The attention mask for the input ids.
+            token_type_ids: The token type ids for the input ids.
+            **kargs: Additional keyword arguments.
+
+        Returns:
+            A tuple containing the denoised input and the generated text.
+        """
+        with torch.no_grad():
+            # inputs_text is a list of str
+            inputs_text = self.alpaca_tokenizer.batch_decode(input_ids,skip_special_tokens=True, clean_up_tokenization_spaces=False)
+
+
+            import time
+            start_time = time.time()
+
+
+            if self.args.maskattack == True :
+                print(f"we begin the masking/denoising {len(inputs_text)}")
+                # Mask using Shap
+                masqued_inputs_text = [self.shap_masking(x, 0.05, None)[0] for x in inputs_text]
+                print(f"Masqued texts len {len(masqued_inputs_text)}")
+                # Denoise the sentences
+                denoised_inputs_text = [self.denoise_sentence(sentence) for sentence in masqued_inputs_text ]
+                inputs_text = denoised_inputs_text
+                print(f"we finished the masking/denoising {len(inputs_text)}")
+                end_time = time.time()
+                print(f"Elapsed time: {end_time - start_time:.6f} seconds")
+
+
+            prompts = [self.template.format(self.instruction, Input) for Input in inputs_text]
+
+            inputs = self.alpaca_tokenizer(prompts, return_tensors="pt",padding=True)
+
+            outputs = self.alpaca_model(input_ids=inputs.input_ids.to(self.alpaca_model.device),attention_mask=inputs.attention_mask.to(self.alpaca_model.device))
+            org_guess_dist = torch.softmax(outputs['logits'][...,-1,:][:,self.label_token],dim=-1)
+
+        return org_guess_dist
