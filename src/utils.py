@@ -1,11 +1,11 @@
 import yaml
 import argparse
-from src.model import Alpaca
+from .model import Alpaca
+from .attack_runner import AttackRunner
 import numpy as np
 import pandas as pd
 import os
 from tqdm import tqdm
-
 
 def load_config(config_file_path):
     """Load the configuration from a YAML file."""
@@ -16,7 +16,6 @@ def load_config(config_file_path):
 
 def setup_seed(seed=42):
     """Set the random seed to ensure reproducibility."""
-
     np.random.seed(seed)
 
 
@@ -42,7 +41,14 @@ def parse_args():
         type=str,
         choices=["attack", "certify"],
         required=True,
-        help="Path to the config file.",
+        help="The mode to run the script in.",
+    )
+    parser.add_argument(
+        "--method",
+        type=str,
+        choices=["DeepWordBug", "TextBugger"],
+        required=True,
+        help="The method to attack the model.",
     )
     parser.add_argument(
         "--config", type=str, default="config.yml", help="Path to the config file."
@@ -68,6 +74,7 @@ def parse_args():
     parser.add_argument(
         "--mask_word", type=str, default="<mask>", choices=["<mask>", "###"]
     )
+    
     return parser.parse_args()
 
 
@@ -224,14 +231,45 @@ def attack(args, config):
         config: The configuration dictionary loaded from the YAML file.
     """
     # Load dataset
-
-    # Get the ground truth for the dataset 
-
-    # Apply an attack technique to the dataset
-
-    # Predict the class of the attacked dataset
-
-    # Compute accuracy of the attacked dataset 
+    # dataset = load_dataset(args, config) # This is how it should realy be loaded
+    dataset = pd.read_json("dataset/agnews_raw/dataset_200.json", orient="records", lines=True)
     
-    # Save the results
-    pass
+    # Setup the model for the appropriate dataset
+    model = setup_model(args, config)
+    
+    # # Instantiate the AttackRunner
+    # attack_runner = AttackRunner(model, dataset, args.method)
+   
+    # # Run the attack    
+    # log_file_name = attack_runner.run_attack()
+
+    # # print("Attack results saved to", log_file_name)
+
+    # # Open the csv log file and print the results  with pandas
+    # df = pd.read_csv(log_file_name)
+    df = pd.read_csv("out/attack/log_2025-01-10 12:23:51.404367_DeepWordBug_half.csv")
+
+    # Print percentage of result_type
+    print(df['result_type'].value_counts(normalize=True))
+
+    failed_count = 0
+    success_count = 0
+    for idx, row in tqdm(df.iterrows(), total=df.shape[0], desc="Processing rows"):
+        if row["result_type"] == "Successful" :
+            ground_truth = row["ground_truth_output"]
+
+
+            text = row['perturbed_text']
+            text = text.replace('[',"")
+            text = text.replace(']',"")
+
+            masked_text = model.shap_masking(text, 0.05, None)
+            denoised_text = model.denoise_sentence(masked_text)
+            label = model.classify_sentence(denoised_text) -101
+            if ground_truth == label :
+                failed_count += 1
+            else :
+                success_count += 1
+    print(f"failed count {failed_count}")
+    print(f"success count {success_count}")
+    print(f'Accuracy after SHAP {(failed_count+108)/200}')

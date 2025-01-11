@@ -1,9 +1,7 @@
 import transformers
 import torch
 import numpy as np
-from transformers import AutoTokenizer, AutoModelForCausalLM
 from captum.attr import (
-    FeatureAblation,
     ShapleyValueSampling, 
     LLMAttribution, 
     TextTemplateInput,
@@ -74,6 +72,7 @@ class Alpaca(torch.nn.Module):
 """        
         self.args = args
         self.batch_size = args.batchsize
+        self.precision = args.precision
         self.alpaca_model, self.alpaca_tokenizer, self.ds_engine = self.get_model(args.precision, model_path)
         self.instruction = None
         self.verbalizer = None
@@ -433,7 +432,7 @@ play it.\n\n### Response:\nTechnology\n\n### Input:\n
         output = self.alpaca_tokenizer.decode(generate_ids[0], skip_special_tokens=True, clean_up_tokenization_spaces=False,)
         return output[len(prompt):]
 
-def forward(self, input_ids, **kargs):
+    def forward(self, input_ids, **kargs):
         """
         Denoise the input text and then generate text based on the denoised input.
 
@@ -455,17 +454,17 @@ def forward(self, input_ids, **kargs):
             start_time = time.time()
 
 
-            if self.args.maskattack == True :
-                print(f"we begin the masking/denoising {len(inputs_text)}")
-                # Mask using Shap
-                masqued_inputs_text = [self.shap_masking(x, 0.05, None)[0] for x in inputs_text]
-                print(f"Masqued texts len {len(masqued_inputs_text)}")
-                # Denoise the sentences
-                denoised_inputs_text = [self.denoise_sentence(sentence) for sentence in masqued_inputs_text ]
-                inputs_text = denoised_inputs_text
-                print(f"we finished the masking/denoising {len(inputs_text)}")
-                end_time = time.time()
-                print(f"Elapsed time: {end_time - start_time:.6f} seconds")
+            # if self.args.maskattack == True :
+            #     print(f"we begin the masking/denoising {len(inputs_text)}")
+            #     # Mask using Shap
+            #     masqued_inputs_text = [self.shap_masking(x, 0.05, None)[0] for x in inputs_text]
+            #     print(f"Masqued texts len {len(masqued_inputs_text)}")
+            #     # Denoise the sentences
+            #     denoised_inputs_text = [self.denoise_sentence(sentence) for sentence in masqued_inputs_text ]
+            #     inputs_text = denoised_inputs_text
+            #     print(f"we finished the masking/denoising {len(inputs_text)}")
+            #     end_time = time.time()
+            #     print(f"Elapsed time: {end_time - start_time:.6f} seconds")
 
 
             prompts = [self.template.format(self.instruction, Input) for Input in inputs_text]
