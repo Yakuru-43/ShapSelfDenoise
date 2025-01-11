@@ -9,6 +9,6 @@ python main.py \
     --config config.yml \
     --batchsize 16 \
     --sample-size 100 \
-    --precision full \
+    --precision half \
     --dataset agnews \
     --mask_word "<mask>"

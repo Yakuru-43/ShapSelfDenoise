@@ -1,0 +1,40 @@
+Traceback (most recent call last):
+  File "/home/yacine/code/ShapSelfDenoise/main.py", line 1, in <module>
+    import src.utils as utils
+  File "/home/yacine/code/ShapSelfDenoise/src/utils.py", line 3, in <module>
+    from .model import Alpaca
+  File "/home/yacine/code/ShapSelfDenoise/src/model.py", line 1, in <module>
+    import transformers
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/transformers/__init__.py", line 26, in <module>
+    from . import dependency_versions_check
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/transformers/dependency_versions_check.py", line 16, in <module>
+    from .utils.versions import require_version, require_version_core
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/transformers/utils/__init__.py", line 27, in <module>
+    from .chat_template_utils import DocstringParsingException, TypeHintParsingException, get_json_schema
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/transformers/utils/chat_template_utils.py", line 39, in <module>
+    from torch import Tensor
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/torch/__init__.py", line 2143, in <module>
+    from . import _meta_registrations
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/torch/_meta_registrations.py", line 1188, in <module>
+    @register_meta(aten.lu_unpack)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/torch/_meta_registrations.py", line 51, in wrapper
+    pytree.tree_map_(register, op)
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/torch/utils/_pytree.py", line 981, in tree_map_
+    tuple(map(func, *flat_args))  # consume and exhaust the iterable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/torch/_meta_registrations.py", line 49, in register
+    _add_op_to_registry(meta_table, op, fn)
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/torch/_decomp/__init__.py", line 52, in _add_op_to_registry
+    overloads.append(getattr(op, ol))
+                     ^^^^^^^^^^^^^^^
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/torch/_ops.py", line 1032, in __getattr__
+    if not _has_script_object_arg(schema)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/torch/_ops.py", line 953, in _has_script_object_arg
+    return any(isinstance(arg.type, torch.ClassType) for arg in schema.arguments)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/torch/_ops.py", line 953, in <genexpr>
+    return any(isinstance(arg.type, torch.ClassType) for arg in schema.arguments)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
