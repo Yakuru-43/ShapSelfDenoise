@@ -247,10 +247,16 @@ def attack(args, config):
 
     # # Open the csv log file and print the results  with pandas
     # df = pd.read_csv(log_file_name)
-    df = pd.read_csv("out/attack/log_2025-01-10 12:23:51.404367_DeepWordBug_half.csv")
+    # df = pd.read_csv("out/attack/log_2025-01-10 12:23:51.404367_DeepWordBug_half.csv")
+    df = pd.read_csv("out/attack/remote_server/log_step1_DeepWord_FULL.csv")
 
     # Print percentage of result_type
     print(df['result_type'].value_counts(normalize=True))
+
+    # count the number of failed and successful attacks
+    num_failed = df[df['result_type'] == "Failed"].shape[0]
+    num_successful = df[df['result_type'] == "Successful"].shape[0]
+    total  = df.shape[0]
 
     failed_count = 0
     success_count = 0
@@ -272,4 +278,4 @@ def attack(args, config):
                 success_count += 1
     print(f"failed count {failed_count}")
     print(f"success count {success_count}")
-    print(f'Accuracy after SHAP {(failed_count+108)/200}')
+    print(f'Accuracy after SHAP {(failed_count+num_failed)/total}')
