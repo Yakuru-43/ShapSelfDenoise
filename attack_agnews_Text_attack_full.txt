@@ -1,0 +1,56 @@
+2025-01-13 12:40:46.027720: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1736772046.050046    8022 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+E0000 00:00:1736772046.056965    8022 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2025-01-13 12:40:46.083829: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX512F FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+Loading alpaca.
+Here is the torch.cuda.is_available() : True
+Tokenizer loaded.
+Loading model with full precision.
+Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:08,  1.68s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:03<00:06,  1.70s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:05<00:05,  1.69s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:06<00:03,  1.69s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:08<00:01,  1.74s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:09<00:00,  1.51s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:09<00:00,  1.61s/it]
+textattack: Unknown if model of class <class 'transformers.models.llama.modeling_llama.LlamaForCausalLM'> compatible with goal function <class 'textattack.goal_functions.classification.untargeted_classification.UntargetedClassification'>.
+textattack: Logging to CSV at path out/attack/TextBugger/NoDefense/full/dataset.csv
+Model loaded with full precision (torch.float32).
+Attack(
+  (search_method): GreedyWordSwapWIR(
+    (wir_method):  unk
+  )
+  (goal_function):  UntargetedClassification
+  (transformation):  CompositeTransformation(
+    (0): WordSwapRandomCharacterInsertion(
+        (random_one):  True
+      )
+    (1): WordSwapRandomCharacterDeletion(
+        (random_one):  True
+      )
+    (2): WordSwapNeighboringCharacterSwap(
+        (random_one):  True
+      )
+    (3): WordSwapHomoglyphSwap
+    (4): WordSwapEmbedding(
+        (max_candidates):  5
+        (embedding):  WordEmbedding
+      )
+    )
+  (constraints): 
+    (0): MaxWordsPerturbed(
+        (max_percent):  0.1
+        (compare_against_original):  True
+      )
+    (1): UniversalSentenceEncoder(
+        (metric):  angular
+        (threshold):  0.8
+        (window_size):  inf
+        (skip_text_shorter_than_window):  False
+        (compare_against_original):  True
+      )
+    (2): RepeatModification
+    (3): StopwordModification
+  (is_black_box):  True
+) 
+
+  0%|          | 0/200 [00:00<?, ?it/s]Token indices sequence length is longer than the specified maximum sequence length for this model (592 > 512). Running this sequence through the model will result in indexing errors
+Starting from v4.46, the `logits` model output will have the same type as the model (except at train time, where it will always be FP32)
+I0000 00:00:1736772098.367736    8022 gpu_device.cc:2022] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 1131 MB memory:  -> device: 0, name: Tesla V100-SXM3-32GB, pci bus id: 0000:05:00.0, compute capability: 7.0
+  0%|          | 1/200 [01:10<3:54:19, 70.65s/it][Succeeded / Failed / Skipped / Total] 0 / 1 / 0 / 1:   0%|          | 1/200 [01:10<3:55:07, 70.89s/it][Succeeded / Failed / Skipped / Total] 0 / 1 / 0 / 1:   1%|          | 2/200 [02:09<3:34:03, 64.87s/it][Succeeded / Failed / Skipped / Total] 0 / 2 / 0 / 2:   1%|          | 2/200 [02:09<3:34:04, 64.87s/it][Succeeded / Failed / Skipped / Total] 0 / 2 / 0 / 2:   2%|▏         | 3/200 [02:44<3:00:28, 54.97s/it][Succeeded / Failed / Skipped / Total] 1 / 2 / 0 / 3:   2%|▏         | 3/200 [02:44<3:00:29, 54.97s/it][Succeeded / Failed / Skipped / Total] 1 / 2 / 0 / 3:   2%|▏         | 4/200 [02:45<2:15:09, 41.37s/it][Succeeded / Failed / Skipped / Total] 1 / 2 / 1 / 4:   2%|▏         | 4/200 [02:45<2:15:09, 41.38s/it][Succeeded / Failed / Skipped / Total] 1 / 2 / 1 / 4:   2%|▎         | 5/200 [03:35<2:19:46, 43.01s/it][Succeeded / Failed / Skipped / Total] 2 / 2 / 1 / 5:   2%|▎         | 5/200 [03:35<2:19:46, 43.01s/it][Succeeded / Failed / Skipped / Total] 2 / 2 / 1 / 5:   3%|▎         | 6/200 [04:13<2:16:24, 42.19s/it][Succeeded / Failed / Skipped / Total] 2 / 3 / 1 / 6:   3%|▎         | 6/200 [04:13<2:16:25, 42.19s/it][Succeeded / Failed / Skipped / Total] 2 / 3 / 1 / 6:   4%|▎         | 7/200 [04:13<1:56:35, 36.25s/it][Succeeded / Failed / Skipped / Total] 2 / 3 / 2 / 7:   4%|▎         | 7/200 [04:13<1:56:35, 36.25s/it][Succeeded / Failed / Skipped / Total] 2 / 3 / 2 / 7:   4%|▍         | 8/200 [04:45<1:54:20, 35.73s/it][Succeeded / Failed / Skipped / Total] 3 / 3 / 2 / 8:   4%|▍         | 8/200 [04:45<1:54:20, 35.73s/it][Succeeded / Failed / Skipped / Total] 3 / 3 / 2 / 8:   4%|▍         | 9/200 [05:12<1:50:24, 34.69s/it][Succeeded / Failed / Skipped / Total] 4 / 3 / 2 / 9:   4%|▍         | 9/200 [05:12<1:50:25, 34.69s/it][Succeeded / Failed / Skipped / Total] 4 / 3 / 2 / 9:   5%|▌         | 10/200 [06:00<1:54:00, 36.00s/it][Succeeded / Failed / Skipped / Total] 4 / 4 / 2 / 10:   5%|▌         | 10/200 [06:00<1:54:00, 36.00s/it]
