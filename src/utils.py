@@ -233,25 +233,20 @@ def attack(args, config):
     # Load dataset
     # dataset = load_dataset(args, config) # This is how it should realy be loaded
     dataset = pd.read_json("dataset/agnews_raw/dataset_200.json", orient="records", lines=True)
-    
+
     # Setup the model for the appropriate dataset
     model = setup_model(args, config)
     
-    # # Instantiate the AttackRunner
-    # attack_runner = AttackRunner(model, dataset, args.method)
+    # Instantiate the AttackRunner
+    attack_runner = AttackRunner(model, dataset, args.method)
    
-    # # Run the attack    
-    # log_file_name = attack_runner.run_attack()
+    # Run the attack    
+    log_file_name = attack_runner.run_attack()
 
-    # # print("Attack results saved to", log_file_name)
+    print("Attack results saved to", log_file_name)
 
-    # # Open the csv log file and print the results  with pandas
-    # df = pd.read_csv(log_file_name)
-    # df = pd.read_csv("out/attack/log_2025-01-10 12:23:51.404367_DeepWordBug_half.csv")
-    df = pd.read_csv("out/attack/remote_server/log_step1_DeepWord_FULL.csv")
-
-    # Print percentage of result_type
-    print(df['result_type'].value_counts(normalize=True))
+    # Open the csv log file with pandas
+    df = pd.read_csv(log_file_name)
 
     # count the number of failed and successful attacks
     num_failed = df[df['result_type'] == "Failed"].shape[0]
@@ -263,19 +258,38 @@ def attack(args, config):
     for idx, row in tqdm(df.iterrows(), total=df.shape[0], desc="Processing rows"):
         if row["result_type"] == "Successful" :
             ground_truth = row["ground_truth_output"]
-
-
+            
+            # Remove the brackets from the perturbed text
             text = row['perturbed_text']
             text = text.replace('[',"")
             text = text.replace(']',"")
 
+            # Apply our defense mechanism
             masked_text = model.shap_masking(text, 0.05, None)
             denoised_text = model.denoise_sentence(masked_text)
             label = model.classify_sentence(denoised_text) -101
+
+            # Add a column to the dataframe with the label 
+            df.loc[idx, 'shap_label'] = label
+
+            # Here the logic is reversed, if the label is the same as the ground truth then it is a failed attack 
             if ground_truth == label :
                 failed_count += 1
             else :
                 success_count += 1
-    print(f"failed count {failed_count}")
-    print(f"success count {success_count}")
+
     print(f'Accuracy after SHAP {(failed_count+num_failed)/total}')
+
+    dir_path = f"out/attack/{args.method}/SHAP_Defense/{args.precision}"
+    # Create the directory if it doesn't exist
+    os.makedirs(dir_path, exist_ok=True)
+
+    # Save the results
+    file_path = os.path.join(dir_path, "results.txt")
+    with open(file_path, "w") as f:
+        f.write(f'Original accuracy : {num_successful + num_failed/total}\n')
+        f.write(f'Accuracy under attack : {num_failed/total}\n')
+        f.write(f'Accuracy with SHAP defense : {(failed_count + num_failed)/total}\n')
+
+    # Save the dataframe to a csv file
+    df.to_csv(os.path.join(dir_path, "dataset.csv"), index=False)
