@@ -18,11 +18,11 @@ def main():
     # Load configuration from YAML file
     config = utils.load_config(args.config)
 
-    # Either certify or attack
-    if args.mode == "certify":
-        utils.certify(args, config)
-    elif args.mode == "attack":
-        utils.attack(args, config)
+    # # Either certify or attack
+    # if args.mode == "certify":
+    #     utils.certify(args, config)
+    # elif args.mode == "attack":
+    #     utils.attack(args, config)
 
 
 if __name__ == "__main__":
