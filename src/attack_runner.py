@@ -45,7 +45,20 @@ class AttackRunner:
          
     def run_attack(self):
         """
-            Run the attack on the dataset
+            Run the attack on the dataset and log the results.
+            This method performs the following steps:
+            1. Sets up the log file name based on the attack name and model precision.
+            2. Configures the attack arguments.
+            3. Executes the attack on the dataset.
+            4. Reads the attacked dataset from the log file.
+            5. Calculates statistics on the attacked dataset, including original accuracy and accuracy under attack.
+            6. Writes the results to a text file.
+            Returns:
+                str: The path to the log file containing the attack results.
+            Raises:
+                FileNotFoundError: If the log file cannot be found after the attack.
+                IOError: If there is an issue reading from or writing to the log file.
+    
         """
 
         # Setup file name for the logs including date and time name of the attack and the model precision
