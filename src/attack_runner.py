@@ -1,5 +1,6 @@
 from .llama_model_wrapper import LLAMAModelWrapper
 import textattack
+import pandas as pd
 import datetime
 
 class AttackRunner:
@@ -49,24 +50,34 @@ class AttackRunner:
         """
 
         # Setup file name for the logs including date and time name of the attack and the model precision
-        now = datetime.datetime.now().__str__()
         model_precision = self.model_wrapper.alpaca.precision
-        log_file_name = f"out/attack/log_{now}_{self.attack_name }_{model_precision}.csv"
+        log_file_name = f"out/attack/{self.attack_name}/NoDefense/{model_precision}/dataset.csv"
 
         # Setup the attack arguments 
         attack_args = textattack.AttackArgs(
             num_examples=-1,
             log_to_csv=log_file_name,
-            checkpoint_interval=10,
-            checkpoint_dir="checkpoints",
             disable_stdout=False,
-            # Additional arguments can be added here if necessary
-            # parallel=True,
-            # num_workers_per_device=2
         )
         attacker = textattack.Attacker(self.attack, self.dataset, attack_args)
 
         # Run
         attacker.attack_dataset()
+
+        attacked_dataset = pd.read_csv("out/attack/log_2025-01-10 12:23:51.404367_DeepWordBug_half.csv")
+
+        # Calculate statistics on the attacked dataset
+        result_counts = attacked_dataset['result_type'].value_counts()
+        total = result_counts.sum()
+        successful = result_counts.get('Successful', 0)
+        failed = result_counts.get('Failed', 0)
+        
+        original_accuracy = (failed + successful) / total
+        accuracy_under_attack = failed / total
+
+        # Open a file or create it if it does not exist to store the results at the end of the file 
+        with open(f"out/attack/{self.attack_name}/NoDefense/{model_precision}/results.txt", "w") as f:
+            f.write(f'Original accuracy : {original_accuracy}\n')
+            f.write(f'Accuracy under attack : {accuracy_under_attack}\n')
 
         return log_file_name
