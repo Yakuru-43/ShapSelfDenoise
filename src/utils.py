@@ -232,7 +232,10 @@ def attack(args, config):
     """
     # Load dataset
     # dataset = load_dataset(args, config) # This is how it should realy be loaded
-    dataset = pd.read_json("dataset/agnews_raw/dataset_200.json", orient="records", lines=True)
+    if args.dataset == "agnews" :
+        dataset = pd.read_json("dataset/agnews_raw/dataset_200.json", orient="records", lines=True)
+    elif args.dataset == "sst2" :
+        dataset = pd.read_json("dataset/sst2_raw/dataset_200.json", orient="records", lines=True)
 
     # Setup the model for the appropriate dataset
     model = setup_model(args, config)
@@ -258,7 +261,7 @@ def attack(args, config):
     for idx, row in tqdm(df.iterrows(), total=df.shape[0], desc="Processing rows"):
         if row["result_type"] == "Successful" :
             ground_truth = row["ground_truth_output"]
-            
+
             # Remove the brackets from the perturbed text
             text = row['perturbed_text']
             text = text.replace('[',"")

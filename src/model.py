@@ -98,7 +98,7 @@ class Alpaca(torch.nn.Module):
             dtype = torch.float16
             print("Loading model with half precision.")
         
-        alpaca_model = transformers.AutoModelForCausalLM.from_pretrained(model_path, device_map = 'auto', torch_dtype=dtype)
+        alpaca_model = transformers.AutoModelForCausalLM.from_pretrained(model_path, device_map = 'cuda:0', torch_dtype=dtype)
         print(f"Model loaded with {precision} precision ({dtype}).")
 
 
