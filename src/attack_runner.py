@@ -63,7 +63,7 @@ class AttackRunner:
         # Run
         attacker.attack_dataset()
 
-        attacked_dataset = pd.read_csv("out/attack/log_2025-01-10 12:23:51.404367_DeepWordBug_half.csv")
+        attacked_dataset = pd.read_csv(log_file_name)
 
         # Calculate statistics on the attacked dataset
         result_counts = attacked_dataset['result_type'].value_counts()
