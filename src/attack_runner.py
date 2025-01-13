@@ -1,7 +1,6 @@
 from .llama_model_wrapper import LLAMAModelWrapper
 import textattack
 import pandas as pd
-import datetime
 
 class AttackRunner:
     def __init__(self, model, dataset, attack_method):
