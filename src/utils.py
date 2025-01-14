@@ -4,8 +4,11 @@ from .model import Alpaca
 from .attack_runner import AttackRunner
 import numpy as np
 import pandas as pd
+import csv
 import os
 from tqdm import tqdm
+
+
 
 def load_config(config_file_path):
     """Load the configuration from a YAML file."""
@@ -256,32 +259,13 @@ def attack(args, config):
     num_successful = df[df['result_type'] == "Successful"].shape[0]
     total  = df.shape[0]
 
-    failed_count = 0
-    success_count = 0
-    for idx, row in tqdm(df.iterrows(), total=df.shape[0], desc="Processing rows"):
-        if row["result_type"] == "Successful" :
-            ground_truth = row["ground_truth_output"]
-
-            # Remove the brackets from the perturbed text
-            text = row['perturbed_text']
-            text = text.replace('[',"")
-            text = text.replace(']',"")
-
-            # Apply our defense mechanism
-            masked_text = model.shap_masking(text, 0.05, None)
-            denoised_text = model.denoise_sentence(masked_text)
-            label = model.classify_sentence(denoised_text) -101
-
-            # Add a column to the dataframe with the label 
-            df.loc[idx, 'shap_label'] = label
-
-            # Here the logic is reversed, if the label is the same as the ground truth then it is a failed attack 
-            if ground_truth == label :
-                failed_count += 1
-            else :
-                success_count += 1
-
-    print(f'Accuracy after SHAP {(failed_count+num_failed)/total}')
+    process_csv(log_file_name, model, total)
+    
+    # count the number of rows where label_shap == ground_truth_output and result_type == Successful
+    df = pd.read_csv(log_file_name)
+    additional_fails_after_defense = df[(df['result_type'] == "Successful") & (df['label_shap'] == df['ground_truth_output'])].shape[0]
+  
+    print(f'Accuracy after SHAP {(additional_fails_after_defense+num_failed)/total}')
 
     dir_path = f"out/attack/{args.method}/SHAP_Defense/{args.precision}"
     # Create the directory if it doesn't exist
@@ -290,9 +274,88 @@ def attack(args, config):
     # Save the results
     file_path = os.path.join(dir_path, "results.txt")
     with open(file_path, "w") as f:
-        f.write(f'Original accuracy : {num_successful + num_failed/total}\n')
+        f.write(f'Original accuracy : {(num_successful + num_failed)/total}\n')
         f.write(f'Accuracy under attack : {num_failed/total}\n')
-        f.write(f'Accuracy with SHAP defense : {(failed_count + num_failed)/total}\n')
+        f.write(f'Accuracy with SHAP defense : {(additional_fails_after_defense + num_failed)/total}\n')
 
-    # Save the dataframe to a csv file
-    df.to_csv(os.path.join(dir_path, "dataset.csv"), index=False)
+    # # Save the dataframe to a csv file
+    # df.to_csv(os.path.join(dir_path, "dataset.csv"), index=False)
+
+def defense(row, model):
+    """
+    Apply the defense mechanism to the perturbed text and return the label.
+
+    Args:
+        row: The row of the dataset.
+        model: The model to be used for classification.
+
+    Returns:
+        label: The label of the perturbed text after applying the defense mechanism.
+    """
+    # Remove the brackets from the perturbed text
+    text = row['perturbed_text']
+    text = text.replace('[',"")
+    text = text.replace(']',"")
+
+    # Apply our defense mechanism
+    masked_text = model.shap_masking(text, 0.05, None)
+    denoised_text = model.denoise_sentence(masked_text)
+    label = model.classify_sentence(denoised_text) -101
+
+    return label
+
+
+def process_csv(file_path, model, total):
+    """
+    Processes a CSV file, calling function f1 on each line, appending the result to the line,
+    and writing it back to the CSV file. Designed to resume processing in case of interruption.
+    
+    :param file_path: The path to the CSV file to be processed.
+    :return: A tuple containing the number of failed and successful attacks.
+    """
+
+    temp_file_path = file_path + '.tmp'
+
+    # Check if a temporary file exists (from a previous interrupted run)
+    if os.path.exists(temp_file_path):
+        # Determine how many lines have been processed so far
+        with open(temp_file_path, 'r', newline='', encoding='utf-8') as temp_file:
+            processed_line_count = sum(1 for _ in temp_file) -1 # Subtract 1 for the header
+            
+    else:
+        processed_line_count = 0
+
+    # Open the original CSV and the temporary file
+    with open(file_path, 'r', newline='', encoding='utf-8') as csv_in, \
+         open(temp_file_path, 'a', newline='', encoding='utf-8') as csv_out:
+
+        reader = csv.DictReader(csv_in)
+        fieldnames = reader.fieldnames + ['label_shap']
+        writer = csv.DictWriter(csv_out, fieldnames=fieldnames)
+        if processed_line_count == 0:
+            writer.writeheader()
+
+        # Skip lines that have already been processed
+        for _ in range(processed_line_count):
+            next(reader)
+
+        # Process remaining lines
+        for row in tqdm(reader, total=total- processed_line_count , desc="Processing rows", miniters=1):
+            # We only apply the defense mechanism to successful attacks
+            if row["result_type"] == "Successful" :
+                ground_truth = row["ground_truth_output"]
+
+                # Call our defense on the current row
+                label = defense(row, model)
+                # Append the result to the row
+                row['label_shap'] = label
+                # Write the updated row to the temporary file
+                writer.writerow(row)
+
+            else :
+                # Write the row to the temporary file without applying the defense mechanism and with empty label_shap
+                writer.writerow(row)
+                
+    # Replace the original file with the fully processed temporary file
+    os.replace(temp_file_path, file_path)
+
