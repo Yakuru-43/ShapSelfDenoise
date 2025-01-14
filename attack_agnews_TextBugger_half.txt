@@ -1,44 +1,0 @@
-2025-01-13 14:32:55.630128: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
-2025-01-13 14:32:55.643130: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-E0000 00:00:1736775175.658384  165747 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
-E0000 00:00:1736775175.662413  165747 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
-2025-01-13 14:32:55.678213: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
-To enable the following instructions: AVX2 AVX512F AVX512_VNNI AVX512_BF16 AVX512_FP16 AVX_VNNI AMX_TILE AMX_INT8 AMX_BF16 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
-Loading alpaca.
-Here is the torch.cuda.is_available() : True
-Tokenizer loaded.
-Loading model with full precision.
-Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:05,  1.04s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:01<00:03,  1.01it/s]Loading checkpoint shards:  50%|█████     | 3/6 [00:02<00:02,  1.03it/s]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:03<00:01,  1.03it/s]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:03<00:01,  1.02it/s]
-Traceback (most recent call last):
-  File "/home/yacine/code/ShapSelfDenoise/main.py", line 29, in <module>
-    main()
-  File "/home/yacine/code/ShapSelfDenoise/main.py", line 25, in main
-    utils.attack(args, config)
-  File "/home/yacine/code/ShapSelfDenoise/src/utils.py", line 241, in attack
-    model = setup_model(args, config)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yacine/code/ShapSelfDenoise/src/utils.py", line 92, in setup_model
-    model = Alpaca(args, config["model"])
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yacine/code/ShapSelfDenoise/src/model.py", line 76, in __init__
-    self.alpaca_model, self.alpaca_tokenizer, self.ds_engine = self.get_model(args.precision, model_path)
-                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yacine/code/ShapSelfDenoise/src/model.py", line 101, in get_model
-    alpaca_model = transformers.AutoModelForCausalLM.from_pretrained(model_path, device_map = 'cuda:0', torch_dtype=dtype)
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/transformers/models/auto/auto_factory.py", line 564, in from_pretrained
-    return model_class.from_pretrained(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/transformers/modeling_utils.py", line 4014, in from_pretrained
-    ) = cls._load_pretrained_model(
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/transformers/modeling_utils.py", line 4502, in _load_pretrained_model
-    new_error_msgs, offload_index, state_dict_index = _load_state_dict_into_meta_model(
-                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/transformers/modeling_utils.py", line 973, in _load_state_dict_into_meta_model
-    set_module_tensor_to_device(model, param_name, param_device, **set_module_kwargs)
-  File "/home/yacine/code/ShapSelfDenoise/venv/lib/python3.12/site-packages/accelerate/utils/modeling.py", line 329, in set_module_tensor_to_device
-    new_value = value.to(device)
-                ^^^^^^^^^^^^^^^^
-torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 172.00 MiB. GPU 0 has a total capacity of 23.62 GiB of which 139.88 MiB is free. Including non-PyTorch memory, this process has 18.44 GiB memory in use. Of the allocated memory 18.25 GiB is allocated by PyTorch, and 3.25 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
