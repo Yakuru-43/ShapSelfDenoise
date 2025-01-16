@@ -184,7 +184,10 @@ def certify(args, config):
     """
     # Load dataset
     # dataset = load_dataset(args, config)
-    dataset = pd.read_json("dataset/agnews_raw/dataset.json", orient="records", lines=True)
+    if args.dataset == "agnews" :
+        dataset = pd.read_json("dataset/agnews/dataset_certify.json", orient="records", lines=True)
+    elif args.dataset == "sst2" :
+        dataset = pd.read_json("dataset/sst2/dataset_certify.json", orient="records", lines=True)
 
     # Setup the model for the appropriate dataset
     model = setup_model(args, config)
@@ -234,11 +237,11 @@ def attack(args, config):
         config: The configuration dictionary loaded from the YAML file.
     """
     # Load dataset
-    # dataset = load_dataset(args, config) # This is how it should realy be loaded
+    # dataset = load_dataset(args, config) # This is how it should realy be loaded but we use this so that we can use the same dataset as SelfDenoise
     if args.dataset == "agnews" :
-        dataset = pd.read_json("dataset/agnews_raw/dataset_200.json", orient="records", lines=True)
+        dataset = pd.read_json("dataset/agnews/dataset_attack.json", orient="records", lines=True)
     elif args.dataset == "sst2" :
-        dataset = pd.read_json("dataset/sst2_raw/dataset_200.json", orient="records", lines=True)
+        dataset = pd.read_json("dataset/sst2/dataset_attack.json", orient="records", lines=True)
 
     # Setup the model for the appropriate dataset
     model = setup_model(args, config)
