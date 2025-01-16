@@ -113,7 +113,7 @@ class Alpaca(torch.nn.Module):
     
     def as_sst2(self):
         mask_word = self.args.mask_word
-
+        self.dataset = "sst2"
         self.denoise_instruction = f"""Replace each mask word {mask_word} in the input sentence with a suitable word. The output sentence should be natural and coherent and should be of the same length as the given sentence.
 
 ### Input: 
@@ -145,14 +145,13 @@ a stirring , funny and finally transporting re-imagining of beauty and the beast
         # ### Response:
         # Negative"""
 
-        self.verbalizer = self.sst2_verbalizer
         self.num_labels = 2
-        self.preprocess_input = self.general_preprocess_input
         self.label_token = [29940,9135]
+        self.label_code =  [0, 1]
 
     def as_agnews(self, mask_word):
-        
-
+        mask_word = self.args.mask_word
+        self.dataset = "agnews"
         self.denoise_instruction = f"""Replace each masked position {mask_word} in the provided sentence with a suitable word to make it natural and coherent. Only one word should be used to replace each {mask_word}. The returned sentence should be of the same length as the given sentence. Provide the answer directly.
 ### Input: 
 Fannie Mae Pays the {mask_word} of Cutting Corners to Look Safe,"Two {mask_word} agencies have {mask_word} that Fannie Mae cut corners when it came to its {mask_word}, and that has severely damaged its image.
@@ -282,7 +281,6 @@ Technology"""
 
             return one_hot_tensor
 
-
     def shap_masking(self, data, mask_rate, precalculated_shapley_values):
         
         """
@@ -305,7 +303,8 @@ Technology"""
         """
 
         if precalculated_shapley_values is None:
-            prompt ="""
+            if self.dataset == "agnews":
+                prompt ="""
 Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\nGiven a 
 news article title and description, classify it into one of the four categories: Sports, World, Technology, or Business. Return the category name as the answer.\n\n### Input: \nTitle: 
 Venezuelans Vote Early in Referendum on Chavez Rule (Reuters)\nDescription: Reuters - Venezuelans turned out early and in large numbers on Sunday to vote in a historic referendum that will 
@@ -316,7 +315,11 @@ Response:\nSports\n\n### Input:\nTitle: Wall St. Bears Claw Back Into the Black 
 again.\n\n### Response:\nBusiness\n        \n### Input:\nTitle: \'Madden,\' \'ESPN\' Football Score in Different Ways (Reuters)\nDescription: Reuters - Was absenteeism a little high\\on Tuesday
 among the guys at the office? EA Sports would like to think it was because "Madden NFL 2005" came out that day, and some fans of the football simulation are rabid enough to take a sick day to 
 play it.\n\n### Response:\nTechnology\n\n### Input:\n
-"""
+""" 
+            elif self.dataset == "sst2":
+                prompt = """
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\n
+Given an English sentence input, determine its sentiment as positive or negative.\n\n### Input:\n"""
 
             suffix = "\n\n### Response:\n"
 
