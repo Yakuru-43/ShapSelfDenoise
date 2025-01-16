@@ -249,7 +249,7 @@ def attack(args, config):
     model = setup_model(args, config)
     
     # Instantiate the AttackRunner
-    attack_runner = AttackRunner(model, dataset, args.method)
+    attack_runner = AttackRunner(model, dataset, args.method, args.dataset)
    
     # Run the attack    
     log_file_name = attack_runner.run_attack()
@@ -305,14 +305,17 @@ def defense(row, model):
     # Apply our defense mechanism
     masked_text = model.shap_masking(text, 0.05, None)
     denoised_text = model.denoise_sentence(masked_text)
-    label = model.classify_sentence(denoised_text) -101
+    if model.dataset == "agnews":
+        label = model.classify_sentence(denoised_text) -101
+    elif model.dataset == "sst2":
+        label = model.classify_sentence(denoised_text)
 
     return label
 
 
 def process_csv(file_path, model, total):
     """
-    Processes a CSV file, calling function f1 on each line, appending the result to the line,
+    Processes a CSV file, calling function defense on each line, appending the result to the line,
     and writing it back to the CSV file. Designed to resume processing in case of interruption.
     
     :param file_path: The path to the CSV file to be processed.

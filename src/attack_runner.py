@@ -3,7 +3,8 @@ import textattack
 import pandas as pd
 
 class AttackRunner:
-    def __init__(self, model, dataset, attack_method):
+    def __init__(self, model, dataset, attack_method, dataset_name):
+        self.dataset_name = dataset_name
         # Format dataset 
         self.dataset = self.format_dataset(dataset)
         
@@ -35,8 +36,10 @@ class AttackRunner:
         # Keep only the text and label columns
         dataset = dataset[['text', 'label']]
 
-        # cast the label column to int and remove 100
-        dataset.loc[:, 'label'] = dataset['label'].astype(int) - 101
+        if self.dataset_name == "agnews" :
+            # cast the label column to int and remove 100
+            dataset.loc[:, 'label'] = dataset['label'].astype(int) - 101
+        
 
         # format the dataset as a list of tuples
         result = [(data['text'], data['label']) for index, data in dataset.iterrows()]
@@ -63,7 +66,7 @@ class AttackRunner:
 
         # Setup file name for the logs including date and time name of the attack and the model precision
         model_precision = self.model_wrapper.alpaca.precision
-        log_file_name = f"out/attack/{self.dataset}/{self.attack_name}/NoDefense/{model_precision}/dataset.csv"
+        log_file_name = f"out/attack/{self.dataset_name}/{self.attack_name}/NoDefense/{model_precision}/dataset.csv"
 
         # Setup the attack arguments 
         attack_args = textattack.AttackArgs(
@@ -88,7 +91,7 @@ class AttackRunner:
         accuracy_under_attack = failed / total
 
         # Open a file or create it if it does not exist to store the results at the end of the file 
-        with open(f"out/attack/{self.dataset}/{self.attack_name}/NoDefense/{model_precision}/results.txt", "w") as f:
+        with open(f"out/attack/{self.dataset_name}/{self.attack_name}/NoDefense/{model_precision}/results.txt", "w") as f:
             f.write(f'Original accuracy : {original_accuracy}\n')
             f.write(f'Accuracy under attack : {accuracy_under_attack}\n')
 
