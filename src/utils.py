@@ -97,8 +97,10 @@ def setup_model(args, config):
     # Setup the model for the appropriate dataset
     if args.dataset == "agnews":
         model.as_agnews(args.mask_word)
+        print("Model setup for AGNews")
     elif args.dataset == "sst2":
         model.as_sst2()
+        print("Model setup for SST2")
 
     return model
 
