@@ -272,7 +272,7 @@ def attack(args, config):
   
     print(f'Accuracy after SHAP {(additional_fails_after_defense+num_failed)/total}')
 
-    dir_path = f"out/attack/{args.method}/SHAP_Defense/{args.precision}"
+    dir_path = f"out/attack/{args.dataset}/{args.method}/SHAP_Defense/{args.precision}"
     # Create the directory if it doesn't exist
     os.makedirs(dir_path, exist_ok=True)
 
