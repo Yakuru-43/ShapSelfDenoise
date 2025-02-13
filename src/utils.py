@@ -42,9 +42,23 @@ def parse_args():
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["attack", "certify"],
+        choices=["attack", "certify","evaluate_lime"],
         required=True,
         help="The mode to run the script in.",
+    )
+    parser.add_argument(
+        "--n",
+        type=int,
+        default= 10,
+        required=False,
+        help="The number of times we want to evaluate the lime defense.",
+    )
+    parser.add_argument(
+        "--defence",
+        type=str,
+        choices=["shap", "lime"],
+        required=True,
+        help="The defence mechanism to use.",
     )
     parser.add_argument(
         "--method",
@@ -255,7 +269,7 @@ def attack(args, config):
     log_file_name = attack_runner.run_attack()
 
     print("Attack results saved to", log_file_name)
-
+    
     # Open the csv log file with pandas
     df = pd.read_csv(log_file_name)
 
@@ -264,15 +278,15 @@ def attack(args, config):
     num_successful = df[df['result_type'] == "Successful"].shape[0]
     total  = df.shape[0]
 
-    process_csv(log_file_name, model, total)
+    process_csv(log_file_name, model, total, args.defence)
     
     # count the number of rows where label_shap == ground_truth_output and result_type == Successful
     df = pd.read_csv(log_file_name)
-    additional_fails_after_defense = df[(df['result_type'] == "Successful") & (df['label_shap'] == df['ground_truth_output'])].shape[0]
+    additional_fails_after_defence = df[(df['result_type'] == "Successful") & (df['label_shap'] == df['ground_truth_output'])].shape[0]
   
-    print(f'Accuracy after SHAP {(additional_fails_after_defense+num_failed)/total}')
+    print(f'Accuracy after SHAP {(additional_fails_after_defence + num_failed)/total}')
 
-    dir_path = f"out/attack/{args.dataset}/{args.method}/SHAP_Defense/{args.precision}"
+    dir_path = f"out/attack/{args.dataset}/{args.method}/SHAP_Defence/{args.precision}"
     # Create the directory if it doesn't exist
     os.makedirs(dir_path, exist_ok=True)
 
@@ -281,29 +295,33 @@ def attack(args, config):
     with open(file_path, "w") as f:
         f.write(f'Original accuracy : {(num_successful + num_failed)/total}\n')
         f.write(f'Accuracy under attack : {num_failed/total}\n')
-        f.write(f'Accuracy with SHAP defense : {(additional_fails_after_defense + num_failed)/total}\n')
+        f.write(f'Accuracy with SHAP defence : {(additional_fails_after_defence + num_failed)/total}\n')
 
     # # Save the dataframe to a csv file
     # df.to_csv(os.path.join(dir_path, "dataset.csv"), index=False)
 
-def defense(row, model):
+def defence(row, model, defence):
     """
-    Apply the defense mechanism to the perturbed text and return the label.
+    Apply the defence mechanism to the perturbed text and return the label.
 
     Args:
         row: The row of the dataset.
         model: The model to be used for classification.
+        defence : The defence mechanism to be used.
 
     Returns:
-        label: The label of the perturbed text after applying the defense mechanism.
+        label: The label of the perturbed text after applying the defence mechanism.
     """
     # Remove the brackets from the perturbed text
     text = row['perturbed_text']
     text = text.replace('[',"")
     text = text.replace(']',"")
 
-    # Apply our defense mechanism
-    masked_text = model.shap_masking(text, 0.05, None)
+    # Apply our defence mechanism
+    if defence == "shap":
+        masked_text = model.shap_masking(text, 0.05, None)
+    elif defence == "lime" :
+        masked_text = model.lime_masking(text, 0.05, None)
     denoised_text = model.denoise_sentence(masked_text)
     if model.dataset == "agnews":
         label = model.classify_sentence(denoised_text) -101
@@ -313,12 +331,15 @@ def defense(row, model):
     return label
 
 
-def process_csv(file_path, model, total):
+def process_csv(file_path, model, total, defence_method):
     """
-    Processes a CSV file, calling function defense on each line, appending the result to the line,
+    Processes a CSV file, calling function defence on each line, appending the result to the line,
     and writing it back to the CSV file. Designed to resume processing in case of interruption.
     
     :param file_path: The path to the CSV file to be processed.
+    :param model: The model to be used for classification.
+    :param total: The total number of rows in the CSV file.
+    :param defence: The defence mechanism to be used.
     :return: A tuple containing the number of failed and successful attacks.
     """
 
@@ -349,21 +370,97 @@ def process_csv(file_path, model, total):
 
         # Process remaining lines
         for row in tqdm(reader, total=total- processed_line_count , desc="Processing rows", miniters=1):
-            # We only apply the defense mechanism to successful attacks
+            # We only apply the defence mechanism to successful attacks
             if row["result_type"] == "Successful" :
-                ground_truth = row["ground_truth_output"]
-
-                # Call our defense on the current row
-                label = defense(row, model)
+                # Call our defence on the current row   
+                label = defence(row, model, defence_method)
                 # Append the result to the row
                 row['label_shap'] = label
                 # Write the updated row to the temporary file
                 writer.writerow(row)
 
             else :
-                # Write the row to the temporary file without applying the defense mechanism and with empty label_shap
+                # Write the row to the temporary file without applying the defence mechanism and with empty label_shap
                 writer.writerow(row)
                 
     # Replace the original file with the fully processed temporary file
     os.replace(temp_file_path, file_path)
 
+def evaluate_lime_defense(n, args, config) :
+    """
+    Since LIME method is not deterministic we need to evaluate it n times and then do a statistical analysis about the distribiton to 
+    validate the accuracy given by lime defense.
+
+    Input : 
+    - n the number of times we want to evaluate the lime defense
+    - args : the command line arguments
+    - config : the configuration dictionary loaded from the YAML file.
+    """ 
+        # Load dataset
+    # dataset = load_dataset(args, config) # This is how it should realy be loaded but we use this so that we can use the same dataset as SelfDenoise
+    if args.dataset == "agnews" :
+        dataset = pd.read_json("dataset/agnews/dataset_attack.json", orient="records", lines=True)
+    elif args.dataset == "sst2" :
+        dataset = pd.read_json("dataset/sst2/dataset_attack.json", orient="records", lines=True)
+
+    # Setup the model for the appropriate dataset
+    model = setup_model(args, config)
+
+    # # Instantiate the AttackRunner
+    # attack_runner = AttackRunner(model, dataset, args.method, args.dataset)
+    
+    # # Release all data from the GPU
+
+    # # Run the attack    
+    # log_file_name = attack_runner.run_attack()
+
+    # print("Attack results saved to", log_file_name)
+
+    log_file_name = "out/attack/agnews/DeepWordBug/NoDefence/half/dataset.csv"
+    # Open the csv log file with pandas
+    df = pd.read_csv(log_file_name)
+
+    accuracies = []
+    for i in range(n):
+
+        # count the number of failed and successful attacks
+        num_failed = df[df['result_type'] == "Failed"].shape[0]
+        total  = df.shape[0]
+        dataset = []
+
+        with open(log_file_name, 'r', newline='', encoding='utf-8') as csv_in:
+            reader = csv.DictReader(csv_in)
+            # fieldnames = reader.fieldnames + ['label_shap']
+
+            for row in tqdm(reader, total=total, desc="Processing rows", miniters=1):
+                # Apply the defence mechanism to successful attacks
+                if row["result_type"] == "Successful":
+                    # Call the defence function on the current row
+                    label = defence(row, model, args.defence)
+                    # Append the result to the row
+                    row['label_shap'] = label
+                else:
+                    # Set label_shap to an empty string for unsuccessful attacks
+                    row['label_shap'] = ''
+                dataset.append(row)
+
+        df = pd.DataFrame(dataset)
+        # Cast the ground_truth_output column to int because for some reason it is read as string
+        df['ground_truth_output'] = df['ground_truth_output'].astype(int)
+        additional_fails_after_defence = df[(df['result_type'] == "Successful") & (df['label_shap'] == df['ground_truth_output'])].shape[0]
+
+        print(f'Accuracy after LIME for the iteration {i} is {(additional_fails_after_defence + num_failed)/total}')
+        accuracies.append((additional_fails_after_defence + num_failed)/total)
+    print(accuracies)
+    # Save accuracies to a file for statistical analysis
+    dir_path = f"out/evaluate/{args.dataset}/{args.method}/LIME_Defence/{args.precision}"
+    # Create the directory if it doesn't exist
+    os.makedirs(dir_path, exist_ok=True)
+    # Save the accuracies to a file
+
+    file_path = os.path.join(dir_path, "accuracies.txt")
+    with open(file_path, "w") as f:
+        for accuracy in accuracies:
+            f.write(f"{accuracy}\n")
+
+    print(f"Accuracies saved to {file_path}")

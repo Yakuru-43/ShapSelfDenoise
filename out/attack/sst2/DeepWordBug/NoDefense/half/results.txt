@@ -1,0 +1,2 @@
+Original accuracy : 0.86
+Accuracy under attack : 0.5

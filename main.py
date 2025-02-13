@@ -23,6 +23,10 @@ def main():
         utils.certify(args, config)
     elif args.mode == "attack":
         utils.attack(args, config)
+    elif args.mode =="evaluate_lime":
+        utils.evaluate_lime_defense(args.n, args, config)
+    else:
+        raise ValueError("Invalid mode")
 
 
 if __name__ == "__main__":

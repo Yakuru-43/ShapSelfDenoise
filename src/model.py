@@ -2,6 +2,7 @@ import transformers
 import torch
 import numpy as np
 from captum.attr import (
+    Lime,
     ShapleyValueSampling, 
     LLMAttribution, 
     TextTemplateInput,
@@ -353,6 +354,49 @@ Given an English sentence input, determine its sentiment as positive or negative
         masqued_text = mask_words(data, shapley_values, mask_rate, "<mask>")
 
         return masqued_text, shapley_values
+
+    def lime_masking(self, data, mask_rate, precalculated_shapley_values):
+        prompt ="""
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\nGiven a 
+news article title and description, classify it into one of the four categories: Sports, World, Technology, or Business. Return the category name as the answer.\n\n### Input: \nTitle: 
+Venezuelans Vote Early in Referendum on Chavez Rule (Reuters)\nDescription: Reuters - Venezuelans turned out early and in large numbers on Sunday to vote in a historic referendum that will 
+either remove left-wing President Hugo Chavez from office or give him a new mandate to govern for the next two years.\n\n### Response:\nWorld\n\n### Input:\nTitle: Phelps, Thorpe Advance in 
+200 Freestyle (AP)\nDescription: AP - Michael Phelps took care of qualifying for the Olympic 200-meter freestyle semifinals Sunday, and then found out he had been added to the American team for 
+the evening\'s 400 freestyle relay final. Phelps\' rivals Ian Thorpe and Pieter van den Hoogenband and teammate Klete Keller were faster than the teenager in the 200 free preliminaries.\n\n### 
+Response:\nSports\n\n### Input:\nTitle: Wall St. Bears Claw Back Into the Black (Reuters)\nDescription: Reuters - Short-sellers, Wall Street\'s dwindling band of ultra-cynics, are seeing green 
+again.\n\n### Response:\nBusiness\n        \n### Input:\nTitle: \'Madden,\' \'ESPN\' Football Score in Different Ways (Reuters)\nDescription: Reuters - Was absenteeism a little high\\on Tuesday
+among the guys at the office? EA Sports would like to think it was because "Madden NFL 2005" came out that day, and some fans of the football simulation are rabid enough to take a sick day to 
+play it.\n\n### Response:\nTechnology\n\n### Input:\n
+"""     
+        suffix = "\n\n### Response:\n"
+
+        model_input = self.alpaca_tokenizer(prompt + data + suffix, return_tensors="pt").to("cuda")
+        with torch.no_grad(): 
+            output_ids = self.alpaca_model.generate(model_input["input_ids"], max_new_tokens=1)[0]
+            response = self.alpaca_tokenizer.decode(output_ids, skip_special_tokens=True)
+            category = response.split()[-1]
+
+        # Here the code that does the LIME shit 
+       
+        fa = Lime(self.alpaca_model)
+        llm_attr = LLMAttribution(fa, self.alpaca_tokenizer)
+
+        eval_prompt, values_to_add = add_placeholders(prompt, data, suffix)
+
+        inp = TextTemplateInput(
+            template=eval_prompt, 
+            values=values_to_add,
+        )
+
+        attr_res = llm_attr.attribute(inp,target= category)
+        # attr_res.plot_seq_attr(show="True")
+
+        lime_values = attr_res.seq_attr.cpu().numpy().tolist()
+
+        masqued_text = mask_words(data, lime_values, mask_rate, "<mask>")
+
+        return masqued_text, lime_values
+
 
     def denoise_instances(self,instances):
         

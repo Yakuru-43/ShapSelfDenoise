@@ -6,6 +6,7 @@
 python main.py \
     --mode attack \
     --method DeepWordBug \
+    --defence shap \
     --config config.yml \
     --batchsize 16 \
     --sample-size 100 \

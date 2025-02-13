@@ -7,6 +7,7 @@
 python main.py \
     --mode attack \
     --method TextBugger \
+    --defence shap \
     --config config.yml \
     --batchsize 16 \
     --sample-size 100 \
