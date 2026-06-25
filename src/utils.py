@@ -57,15 +57,17 @@ def parse_args():
         "--defence",
         type=str,
         choices=["shap", "lime"],
-        required=True,
-        help="The defence mechanism to use.",
+        required=False,
+        default=None,
+        help="The defence mechanism to use. Required for 'attack' and 'evaluate_lime' modes.",
     )
     parser.add_argument(
         "--method",
         type=str,
         choices=["DeepWordBug", "TextBugger"],
-        required=True,
-        help="The method to attack the model.",
+        required=False,
+        default=None,
+        help="The method to attack the model. Required for 'attack' mode.",
     )
     parser.add_argument(
         "--config", type=str, default="config.yml", help="Path to the config file."
@@ -92,7 +94,16 @@ def parse_args():
         "--mask_word", type=str, default="<mask>", choices=["<mask>", "###"]
     )
     
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Per-mode requirements (kept out of `required=True` so that `certify`,
+    # which needs neither, is not blocked by argparse).
+    if args.mode == "attack" and (args.method is None or args.defence is None):
+        parser.error("--method and --defence are required when --mode attack")
+    if args.mode == "evaluate_lime" and args.defence is None:
+        parser.error("--defence is required when --mode evaluate_lime")
+
+    return args
 
 
 def setup_model(args, config):
@@ -317,11 +328,14 @@ def defence(row, model, defence):
     text = text.replace('[',"")
     text = text.replace(']',"")
 
-    # Apply our defence mechanism
+    # Apply our defence mechanism.
+    # NOTE: shap_masking / lime_masking return a tuple (masked_text, values);
+    # we only want the masked text here, otherwise the denoiser receives the
+    # stringified values list as part of its prompt and produces garbage.
     if defence == "shap":
-        masked_text = model.shap_masking(text, 0.05, None)
+        masked_text = model.shap_masking(text, 0.05, None)[0]
     elif defence == "lime" :
-        masked_text = model.lime_masking(text, 0.05, None)
+        masked_text = model.lime_masking(text, 0.05, None)[0]
     denoised_text = model.denoise_sentence(masked_text)
     if model.dataset == "agnews":
         label = model.classify_sentence(denoised_text) -101
@@ -416,7 +430,9 @@ def evaluate_lime_defense(n, args, config) :
 
     # print("Attack results saved to", log_file_name)
 
-    log_file_name = "out/attack/agnews/DeepWordBug/NoDefence/half/dataset.csv"
+    # Use the NoDefence attack output for the selected dataset/method/precision.
+    # (This file is produced by running `--mode attack` first.)
+    log_file_name = f"out/attack/{args.dataset}/{args.method}/NoDefence/{args.precision}/dataset.csv"
     # Open the csv log file with pandas
     df = pd.read_csv(log_file_name)
 

@@ -356,7 +356,8 @@ Given an English sentence input, determine its sentiment as positive or negative
         return masqued_text, shapley_values
 
     def lime_masking(self, data, mask_rate, precalculated_shapley_values):
-        prompt ="""
+        if self.dataset == "agnews":
+            prompt = """
 Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\nGiven a 
 news article title and description, classify it into one of the four categories: Sports, World, Technology, or Business. Return the category name as the answer.\n\n### Input: \nTitle: 
 Venezuelans Vote Early in Referendum on Chavez Rule (Reuters)\nDescription: Reuters - Venezuelans turned out early and in large numbers on Sunday to vote in a historic referendum that will 
@@ -367,7 +368,11 @@ Response:\nSports\n\n### Input:\nTitle: Wall St. Bears Claw Back Into the Black 
 again.\n\n### Response:\nBusiness\n        \n### Input:\nTitle: \'Madden,\' \'ESPN\' Football Score in Different Ways (Reuters)\nDescription: Reuters - Was absenteeism a little high\\on Tuesday
 among the guys at the office? EA Sports would like to think it was because "Madden NFL 2005" came out that day, and some fans of the football simulation are rabid enough to take a sick day to 
 play it.\n\n### Response:\nTechnology\n\n### Input:\n
-"""     
+"""
+        elif self.dataset == "sst2":
+            prompt = """
+Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\n\n### Instruction:\n
+Given an English sentence input, determine its sentiment as positive or negative.\n\n### Input:\n"""
         suffix = "\n\n### Response:\n"
 
         model_input = self.alpaca_tokenizer(prompt + data + suffix, return_tensors="pt").to("cuda")
