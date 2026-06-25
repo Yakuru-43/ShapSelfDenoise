@@ -342,7 +342,14 @@ Given an English sentence input, determine its sentiment as positive or negative
                 values=values_to_add,
             )
 
-            attr_res = llm_attr.attribute(inp,target= category)
+            # n_samples = number of sampled permutations for the Shapley estimate;
+            # lower is faster but gives a noisier importance ranking.
+            # NOTE: captum's LLMAttribution does NOT support perturbations_per_eval > 1
+            # (it scores variable-length target sequences, which then fail to
+            # concatenate -> "Sizes of tensors must match" RuntimeError), so we
+            # leave that at captum's default of 1.
+            n_samples = getattr(self.args, "shap_n_samples", 25)
+            attr_res = llm_attr.attribute(inp, target=category, n_samples=n_samples)
         
             #Ge the shapley values 
             shapley_values = attr_res.token_attr.cpu().numpy().tolist()[0]

@@ -5,3 +5,4 @@ venv
 /test
 test.py
 checkpoints/
+logs/

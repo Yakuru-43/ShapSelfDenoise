@@ -1,0 +1,14 @@
+mode = certify
+n = 10
+defence = None
+method = None
+config = config.yml
+batchsize = 16
+sample_size = 5
+precision = half
+dataset = agnews
+maskrate = 0.1
+mask_word = <mask>
+Mask Rate: 0.1
+
+Accuracy: 0.84

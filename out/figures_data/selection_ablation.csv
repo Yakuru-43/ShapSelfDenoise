@@ -1,0 +1,7 @@
+dataset,strategy,seed,n_examples,mean_time_per_example,accuracy
+sst2,shap,42,5,23.287877577589825,0.6
+sst2,lime,42,5,2.5794945479836313,0.6
+sst2,random,1,5,1.3757828650064767,0.8
+agnews,shap,42,5,98.10283166700974,0.8
+agnews,lime,42,5,5.352099716011435,0.8
+agnews,random,1,5,2.5953090735711157,0.8

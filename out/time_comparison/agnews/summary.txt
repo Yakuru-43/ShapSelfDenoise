@@ -1,0 +1,15 @@
+dataset            : agnews
+precision          : half
+batch size         : 16
+ShapSelfDenoise mask rate : 0.05
+SelfDenoise     mask rate : 0.05
+num inputs         : 5
+SelfDenoise copies : 10
+
+ShapSelfDenoise total time (s) : 109.140
+SelfDenoise     total time (s) : 41.856
+ShapSelfDenoise mean/input (s) : 21.828
+SelfDenoise     mean/input (s) : 8.371
+speedup (SelfDenoise / Shap)   : 0.38x
+ShapSelfDenoise accuracy       : 0.800
+SelfDenoise     accuracy       : 0.800

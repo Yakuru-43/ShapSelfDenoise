@@ -1,0 +1,15 @@
+dataset            : sst2
+precision          : half
+batch size         : 16
+ShapSelfDenoise mask rate : 0.05
+SelfDenoise     mask rate : 0.05
+num inputs         : 5
+SelfDenoise copies : 10
+
+ShapSelfDenoise total time (s) : 29.030
+SelfDenoise     total time (s) : 18.293
+ShapSelfDenoise mean/input (s) : 5.806
+SelfDenoise     mean/input (s) : 3.659
+speedup (SelfDenoise / Shap)   : 0.63x
+ShapSelfDenoise accuracy       : 0.600
+SelfDenoise     accuracy       : 0.600

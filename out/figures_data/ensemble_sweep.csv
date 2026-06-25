@@ -1,0 +1,7 @@
+dataset,method,num_copies,seed,n_examples,mask_rate,mean_time_per_example,accuracy
+sst2,ShapSelfDenoise,1,42,5,0.05,23.277209284622224,0.6
+sst2,SelfDenoise,1,1,5,0.05,1.4268740391824395,0.8
+sst2,SelfDenoise,10,1,5,0.05,3.7442367350216954,0.6
+agnews,ShapSelfDenoise,1,42,5,0.05,97.60863233385608,0.8
+agnews,SelfDenoise,1,1,5,0.05,2.6024713057558984,0.8
+agnews,SelfDenoise,10,1,5,0.05,9.26667142561637,0.8

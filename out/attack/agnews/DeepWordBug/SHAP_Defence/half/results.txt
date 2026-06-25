@@ -1,0 +1,3 @@
+Original accuracy : 0.79
+Accuracy under attack : 0.54
+Accuracy with SHAP defence : 0.74

@@ -50,6 +50,7 @@ import numpy as np
 import pandas as pd
 import torch
 import yaml
+from tqdm import tqdm
 
 from src.model import Alpaca
 
@@ -82,11 +83,19 @@ def parse_args():
                    help="Ensemble size for the ORIGINAL SelfDenoise "
                         "(the original default predict_ensemble is 100).")
     p.add_argument("--mask-rate", type=float, default=0.05,
-                   help="Mask rate for both methods (top-p%% for SHAP, random "
-                        "p%% for SelfDenoise).")
+                   help="ShapSelfDenoise mask rate: fraction of top-SHAP words "
+                        "masked in the single copy (your paper's value).")
+    p.add_argument("--selfdenoise-mask-rate", type=float, default=0.05,
+                   help="SelfDenoise random mask rate per copy. The SelfDenoise "
+                        "paper uses 5%% for ALL methods in the EMPIRICAL robustness "
+                        "table (Table 1); the repo's 0.7 is a certification-only "
+                        "default, not used here.")
     p.add_argument("--min-keep", type=int, default=2,
                    help="Minimum words to keep unmasked (matches the original).")
     p.add_argument("--seed", type=int, default=42, help="Random seed.")
+    p.add_argument("--shap-n-samples", type=int, default=25,
+                   help="captum ShapleyValueSampling permutations. Lower is "
+                        "faster but noisier (25 = captum default).")
     return p.parse_args()
 
 
@@ -127,14 +136,19 @@ def now():
 # Batched denoise / classify (reuse the repo's exact generation settings)
 # --------------------------------------------------------------------------- #
 @torch.no_grad()
-def denoise_batch(model, texts):
+def denoise_batch(model, texts, progress=None):
     """Denoise a list of masked sentences, batched by model.batch_size.
 
-    Mirrors Alpaca.denoise_sentence / denoise_instances exactly."""
+    Mirrors Alpaca.denoise_sentence / denoise_instances exactly. If `progress`
+    is a label string, show a transient per-batch bar (used for the big
+    SelfDenoise ensemble); default None keeps the function silent."""
     tok = model.alpaca_tokenizer
     bs = max(1, model.batch_size)
     out = []
-    for i in range(0, len(texts), bs):
+    chunks = range(0, len(texts), bs)
+    if progress:
+        chunks = tqdm(chunks, desc=progress, unit="batch", leave=False)
+    for i in chunks:
         chunk = texts[i:i + bs]
         prompts = [
             model.template_without_input.format(model.denoise_instruction.format(t))
@@ -156,15 +170,19 @@ def denoise_batch(model, texts):
 
 
 @torch.no_grad()
-def classify_batch(model, texts):
+def classify_batch(model, texts, progress=None):
     """Classify a list of sentences, batched. Returns 0-based class indices.
 
     Mirrors Alpaca.classify_sentence (left padding -> last-token logits ->
-    softmax over the label tokens -> argmax)."""
+    softmax over the label tokens -> argmax). `progress` works as in
+    denoise_batch."""
     tok = model.alpaca_tokenizer
     bs = max(1, model.batch_size)
     preds = []
-    for i in range(0, len(texts), bs):
+    chunks = range(0, len(texts), bs)
+    if progress:
+        chunks = tqdm(chunks, desc=progress, unit="batch", leave=False)
+    for i in chunks:
         chunk = texts[i:i + bs]
         prompts = [model.template.format(model.instruction, t) for t in chunk]
         inputs = tok(prompts, return_tensors="pt", padding=True)
@@ -210,14 +228,18 @@ def random_masked_copies(text, rate, num_copies, mask_token, min_keep=2):
     return copies
 
 
-def selfdenoise_predict(model, text, mask_rate, num_copies, min_keep=2):
+def selfdenoise_predict(model, text, mask_rate, num_copies, min_keep=2, progress=False):
     """Original SelfDenoise: random-mask ensemble -> denoise each -> classify
-    each -> majority vote."""
+    each -> majority vote. Set progress=True for a transient sub-bar over the
+    (dominant) denoise step; tqdm overhead is sub-millisecond and does not
+    meaningfully affect the timing."""
     copies = random_masked_copies(
         text, mask_rate, num_copies, mask_token=model.args.mask_word, min_keep=min_keep
     )
-    denoised = denoise_batch(model, copies)
-    preds = classify_batch(model, denoised)
+    denoised = denoise_batch(
+        model, copies, progress=(f"  denoise x{num_copies}" if progress else None))
+    preds = classify_batch(
+        model, denoised, progress=("  classify" if progress else None))
     votes = np.bincount(np.asarray(preds, dtype=int), minlength=model.num_labels)
     return int(np.argmax(votes))
 
@@ -242,13 +264,19 @@ def main():
         model.as_sst2()
     print(f"Model ready for {args.dataset} "
           f"({args.precision} precision, batch size {model.batch_size}).")
-    print(f"Comparing on {len(texts)} inputs | mask_rate={args.mask_rate} | "
+    print(f"Comparing on {len(texts)} inputs | "
+          f"ShapSelfDenoise mask_rate={args.mask_rate} | "
+          f"SelfDenoise mask_rate={args.selfdenoise_mask_rate} | "
           f"SelfDenoise num_copies={args.num_copies}\n")
 
     # ---- Warm-up (absorbs CUDA init / kernel compilation, not timed) ------- #
+    # A tiny throwaway sentence triggers the one-time CUDA / cuBLAS / kernel
+    # costs WITHOUT paying a full-length SHAP attribution (which can take
+    # minutes). The first real input may re-autotune very slightly; negligible.
     print("Warming up ...")
-    _ = shapselfdenoise_predict(model, texts[0], args.mask_rate)
-    _ = selfdenoise_predict(model, texts[0], args.mask_rate,
+    warm = "good movie"
+    _ = shapselfdenoise_predict(model, warm, args.mask_rate)
+    _ = selfdenoise_predict(model, warm, args.selfdenoise_mask_rate,
                             min(args.num_copies, model.batch_size), args.min_keep)
 
     # Re-seed so the timed random masks are reproducible regardless of warm-up.
@@ -256,17 +284,20 @@ def main():
 
     # ---- Timed loop -------------------------------------------------------- #
     rows = []
-    print(f"\n{'idx':>3} {'words':>5} {'shap(s)':>9} {'selfden(s)':>11} "
-          f"{'speedup':>8} {'shap_pred':>9} {'self_pred':>9} {'label':>5}")
-    print("-" * 70)
-    for i, (text, label) in enumerate(zip(texts, labels)):
+    header = (f"{'idx':>3} {'words':>5} {'shap(s)':>9} {'selfden(s)':>11} "
+              f"{'speedup':>8} {'shap_pred':>9} {'self_pred':>9} {'label':>5}")
+    tqdm.write("\n" + header)
+    tqdm.write("-" * 70)
+    bar = tqdm(enumerate(zip(texts, labels)), total=len(texts),
+               desc="Comparing", unit="input")
+    for i, (text, label) in bar:
         t0 = now()
         shap_pred = shapselfdenoise_predict(model, text, args.mask_rate)
         shap_t = now() - t0
 
         t0 = now()
-        self_pred = selfdenoise_predict(model, text, args.mask_rate,
-                                        args.num_copies, args.min_keep)
+        self_pred = selfdenoise_predict(model, text, args.selfdenoise_mask_rate,
+                                        args.num_copies, args.min_keep, progress=True)
         self_t = now() - t0
 
         speedup = (self_t / shap_t) if shap_t > 0 else float("nan")
@@ -274,8 +305,11 @@ def main():
                          shap_time=shap_t, selfdenoise_time=self_t,
                          shap_pred=shap_pred, selfdenoise_pred=self_pred,
                          label=int(label)))
-        print(f"{i:>3} {len(text.split()):>5} {shap_t:>9.3f} {self_t:>11.3f} "
-              f"{speedup:>7.2f}x {shap_pred:>9} {self_pred:>9} {int(label):>5}")
+        bar.set_postfix({"shap": f"{shap_t:.2f}s", "self": f"{self_t:.2f}s",
+                         "speedup": f"{speedup:.1f}x"})
+        tqdm.write(f"{i:>3} {len(text.split()):>5} {shap_t:>9.3f} {self_t:>11.3f} "
+                   f"{speedup:>7.2f}x {shap_pred:>9} {self_pred:>9} {int(label):>5}")
+    bar.close()
 
     res = pd.DataFrame(rows)
 
@@ -308,7 +342,8 @@ def main():
         f.write(f"dataset            : {args.dataset}\n")
         f.write(f"precision          : {args.precision}\n")
         f.write(f"batch size         : {model.batch_size}\n")
-        f.write(f"mask rate          : {args.mask_rate}\n")
+        f.write(f"ShapSelfDenoise mask rate : {args.mask_rate}\n")
+        f.write(f"SelfDenoise     mask rate : {args.selfdenoise_mask_rate}\n")
         f.write(f"num inputs         : {len(res)}\n")
         f.write(f"SelfDenoise copies : {args.num_copies}\n\n")
         f.write(f"ShapSelfDenoise total time (s) : {shap_total:.3f}\n")
